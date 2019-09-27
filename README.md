@@ -1,1 +1,2 @@
-# ethz-advanced-ml
+# ETHZ Advanced Machine Learning Course Projects
+
