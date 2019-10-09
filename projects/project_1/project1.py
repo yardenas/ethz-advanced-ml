@@ -27,7 +27,8 @@ def print_time_since_checkpoint(checkpoint_time): # prints the time since the la
         
 def cv_r2score(solver, N, X, y, print_params=False): # returns the R2-score crossvalidated N times
     
-    r2 = np.zeros(N)
+    r2_train = np.zeros(N)
+    r2_test = np.zeros(N)
     i = 0
     
     kf = KFold(n_splits = N) 
@@ -38,13 +39,15 @@ def cv_r2score(solver, N, X, y, print_params=False): # returns the R2-score cros
         y_test = y[test]
 
         fit_solver = solver.fit(X_train,y_train)
-        pred_solver = fit_solver.predict(X_test)
-        r2[i] = r2_score(y_test, pred_solver)
+        pred_solver_train = fit_solver.predict(X_train)
+        pred_solver_test = fit_solver.predict(X_test)
+        r2_test[i] = r2_score(y_test, pred_solver_test)
+        r2_train[i] = r2_score(y_train, pred_solver_train)
         i += 1
         if print_params:
             print(solver.best_params_ )
             
-    return r2
+    return r2_train,r2_test
     
 
 def main():
@@ -69,6 +72,13 @@ def main():
     
     
     print('\nFEATURE ENGINEERING')
+    # data normalisation
+    scaler = StandardScaler()
+    scaler.fit(X_train)
+    X_train = scaler.transform(X_train)
+    X_test = scaler.transform(X_test)
+    
+    
     # substitute nan by 0
     for i in range(np.shape(X_train)[0]):
         for k in range(np.shape(X_train)[1]):
@@ -80,39 +90,38 @@ def main():
             if(np.isnan(X_test[i,k])):
                 X_test[i,k] = 0
     
+    print('Data normalisation')
+    print('Mean of X_train:', X_train.mean())
+    print('Std of X_train:', X_train.std())
+    
     print_time_since_checkpoint(checkpoint_time)
     checkpoint_time = time.time()
     
     
     print('\nAPPLY LEARNING METHOD')
-    scaler = StandardScaler()
-    scaler.fit(X_train)
-    X_train = scaler.transform(X_train)
-    X_test = scaler.transform(X_test)
-    
     # Ridge regression with best alpha
-#    alpha = np.logspace(0,8,num=9)
-#    print(alpha)
-#    parameters = {'alpha':(alpha)}
-#    reg = Ridge(fit_intercept=False)
-#    reg_best = GridSearchCV(reg, parameters, cv=3)
-#    fit_reg_best = reg_best.fit(X_train,y_train)
-#    print(fit_reg_best.best_params_)
-#    y_pred = fit_reg_best.predict(X_test)
+    alpha = np.logspace(0,8,num=9)
+    print(alpha)
+    parameters = {'alpha':(alpha)}
+    reg = Ridge(fit_intercept=False)
+    reg_best = GridSearchCV(reg, parameters, cv=3)
+    fit_reg_best = reg_best.fit(X_train,y_train)
+    print(fit_reg_best.best_params_)
+    y_pred = fit_reg_best.predict(X_test)
     
     print('MLP with parameters: ')
-    alpha = [0.00001,0.001]
-    MLPlayers = [(200,100)]
-    parameters = {'alpha':(alpha), 'hidden_layer_sizes':(MLPlayers)}
-    mlp = MLPRegressor(solver='lbfgs')
-    mlp_best = GridSearchCV(mlp, parameters, cv=3)
-    fit_mlp_best = mlp_best.fit(X_train,y_train.ravel())
-    print(fit_mlp_best.best_params_)
-    y_pred = fit_mlp_best.predict(X_test)
+#    alpha = [0.00001,0.001]
+#    MLPlayers = [(200,100)]
+#    parameters = {'alpha':(alpha), 'hidden_layer_sizes':(MLPlayers)}
+#    mlp = MLPRegressor(solver='lbfgs')
+#    mlp_best = GridSearchCV(mlp, parameters, cv=3)
+#    fit_mlp_best = mlp_best.fit(X_train,y_train.ravel())
+#    print(fit_mlp_best.best_params_)
+#    y_pred = fit_mlp_best.predict(X_test)
     
     # check performance
-#    r2score = cv_r2score(mlp_best, 5, X_train, y_train.ravel(), print_params=True)
-#    print(r2score)
+    r2score_train, r2score_test = cv_r2score(reg_best, 5, X_train, y_train.ravel(), print_params=True)
+    print('Training error:',r2score_train, '\nTest error:', r2score_test)
     
     print_time_since_checkpoint(checkpoint_time)
     
