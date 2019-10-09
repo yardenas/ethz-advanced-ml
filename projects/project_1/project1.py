@@ -20,11 +20,32 @@ from sklearn.decomposition import PCA
 # Prints the time since the last checkpoint (stored in checkpoint_time)
 def print_time_since_checkpoint(checkpoint_time):
     
-    if time.time()-checkpoint_time<60:
+    if time.time()-checkpoint_time < 60:
         print('>>> ', round(time.time()-checkpoint_time, 3), 's')
     else:
-        print('>>> ', math.floor((time.time()-checkpoint_time)/60),
+        print('>>> ', math.floor((time.time()-checkpoint_time) / 60),
               'min', round(math.fmod(time.time()-checkpoint_time, 60)), 's')
+
+
+# returns the R2-score cross-validated N times
+def cv_r2score(solver, N, X, y):
+    r2_train = np.zeros(N)
+    r2_test = np.zeros(N)
+    i = 0
+    kf = KFold(n_splits=N)
+    for train, test in kf.split(X, y):
+        x_train = X[train]
+        x_test = X[test]
+        y_train = y[train]
+        y_test = y[test]
+
+        fit_solver = solver.fit(x_train, y_train)
+        pred_solver_train = fit_solver.predict(x_train)
+        pred_solver_test = fit_solver.predict(x_test)
+        r2_test[i] = r2_score(y_test, pred_solver_test)
+        r2_train[i] = r2_score(y_train, pred_solver_train)
+        i += 1
+    return r2_train, r2_test
 
 
 def main():
@@ -61,14 +82,13 @@ def main():
     print('Std of X_train:', x_train.std())
 
     # PCA decomposition
-    pca = PCA(n_components=0.999999, whiten=True).fit(x_train)
+    pca = PCA(n_components=0.85, whiten=True).fit(x_train)
     x_train = pca.transform(x_train)
-
     print_time_since_checkpoint(checkpoint_time)
     print('\nAPPLY LEARNING METHOD')
     assert(np.isfinite(x_train).all())
-    alphas = np.logspace(-4, 0, num=7)
-    reg = RidgeCV(alphas, fit_intercept=True, cv=10).fit(x_train, y_train)
+    alphas = np.logspace(-5, 0, num=8)
+    reg = RidgeCV(alphas, fit_intercept=True, cv=None).fit(x_train, y_train)
     print("Training Coefficient of Determination (R^2): %0.4f" %
           reg.score(x_train, y_train))
 
@@ -77,7 +97,13 @@ def main():
     x_test = pca.transform(x_test)
     y_pred = reg.predict(x_test)
 
-    # Write prediction into solution.csv
+    # Check performance
+    r2score_train, r2score_test = \
+        cv_r2score(reg, 7, x_train, y_train.ravel())
+    print('Training error:', r2score_train, '\nTest error:', r2score_test)
+    print_time_since_checkpoint(checkpoint_time)
+    
+    # write prediction into solution.csv
     sol = pd.read_csv('sample.csv', header=None)
     z, s = np.shape(sol)
     for i in range(z - 1):
