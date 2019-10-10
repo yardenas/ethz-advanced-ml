@@ -28,10 +28,10 @@ def parse_args():
     parser.add_argument('--target', dest='target', required=True, help='Relative path of the target data.')
     parser.add_argument('--test', dest='test', required=True, help='Relative of the test data.')
     parser.add_argument('--predict', dest='predict', required=True, help='Relative of the prediction.')
-    parser.add_argument('--pca', dest='use_pca', type=bool, default=False, help='Use PCA. Default: False')
+    parser.add_argument('--pca', dest='use_pca', action='store_true', help='Use PCA. Default: False')
     parser.add_argument('--pca_belief_ratio', dest='pca_belief_ratio', type=float, default=0.85,
                         help='Amount of variance that should be explained')
-    parser.add_argument('--regression_normalize', dest='normalize', type=bool, default=True,
+    parser.add_argument('--regression_normalize', dest='normalize', action='store_true',
                         help='Let RidgeCV normalize the training data. Default: False')
     parser.add_argument('--n_folds', dest='n_folds', type=int, default=5, help='Number of folds for the cross-'
                                                                                'validation. Default: 5')
@@ -40,6 +40,7 @@ def parse_args():
         parser.print_help()
         sys.exit(1)
     args = parser.parse_args()
+    print(args)
     return args
 
 
@@ -118,8 +119,10 @@ def main():
 
     # PCA decomposition
     if options.use_pca:
+        print("Using PCA.")
         pca = PCA(n_components=options.pca_belief_ratio, whiten=True).fit(x_train)
         x_train = pca.transform(x_train)
+
     print_time_since_checkpoint(checkpoint_time)
     print('\nAPPLY LEARNING METHOD')
     assert(np.isfinite(x_train).all())
