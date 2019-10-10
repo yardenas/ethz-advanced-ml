@@ -15,8 +15,10 @@ import pandas as pd
 from sklearn.linear_model import RidgeCV
 from sklearn.model_selection import KFold
 from sklearn.metrics import r2_score
-from sklearn.preprocessing import RobustScaler
+from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
+from sklearn.experimental import enable_iterative_imputer
+from sklearn.impute import  IterativeImputer
 
 
 def parse_args():
@@ -33,8 +35,10 @@ def parse_args():
                         help='Amount of variance that should be explained')
     parser.add_argument('--regression_normalize', dest='normalize', action='store_true',
                         help='Let RidgeCV normalize the training data. Default: False')
-    parser.add_argument('--n_folds', dest='n_folds', type=int, default=5, help='Number of folds for the cross-'
-                                                                               'validation. Default: 5')
+    parser.add_argument('--n_folds', dest='n_folds', type=int, default=5,
+                        help='Number of folds for the cross-validation. Default: 5')
+    parser.add_argument('--imputer_n_nearest_features', dest='imputer_n_nearest_features', type=int, default=50,
+                             help='Number of features to use while imputing.')
     if len(sys.argv) == 1:
         print("Received %d inputs instead of %d" % (len(sys.argv), 9))
         parser.print_help()
@@ -107,12 +111,13 @@ def main():
     print("Junk percentage: %0.3f%%" % (x_train[~np.isfinite(x_train)].shape[0]
           / x_train.size * 100.))
 
+    # Data NaNs imputation
+    imp = IterativeImputer(n_nearest_features=options.imputer_n_nearest_features)
+    imp.fit(x_train)
+    x_train = imp.transform(x_train)
     # Data normalization
-    scaler = RobustScaler().fit(x_train)
+    scaler = StandardScaler().fit(x_train)
     x_train = scaler.transform(x_train)
-    # After scaling, the mean is approximately 0. therefore, replace NaNs
-    # with it.
-    x_train[~np.isfinite(x_train)] = 0.
     print('\nDATA NORMALIZATION REPORT')
     print('Mean of X_train:', x_train.mean())
     print('Std of X_train:', x_train.std())
@@ -132,8 +137,9 @@ def main():
     print("Training Coefficient of Determination (R^2): %0.4f" %
           reg.score(x_train, y_train))
 
+    x_test = imp.transform(x_test)
+    assert(np.isfinite(x_test).all())
     x_test = scaler.transform(x_test)
-    x_test[~np.isfinite(x_test)] = 0.
     if options.use_pca:
         x_test = pca.transform(x_test)
     y_pred = reg.predict(x_test)
@@ -145,11 +151,10 @@ def main():
     print_time_since_checkpoint(checkpoint_time)
     
     # Write prediction into solution.csv
-    sol = pd.read_csv('sample.csv', header=None)
-    z, s = np.shape(sol)
-    for i in range(z - 1):
-        sol.iat[i + 1, 1] = y_pred[i]
-    sol.to_csv(options.predict, index=False, header=None)
+    y_pred = [''.join(str(y) for y in x) for x in y_pred]
+    id = [float(i) for i in range(0, len(y_pred))]
+    df = pd.DataFrame({'id': id, 'y': y_pred})
+    df.to_csv(options.predict, index=False)
     print('Prediction written to solution.csv')
     print_time_since_checkpoint(start_time)
     
