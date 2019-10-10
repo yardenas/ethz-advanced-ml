@@ -12,13 +12,12 @@ import argparse
 import sys
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import RidgeCV
+from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.model_selection import KFold
 from sklearn.metrics import r2_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
-from sklearn.experimental import enable_iterative_imputer
-from sklearn.impute import  IterativeImputer
+from sklearn.impute import  SimpleImputer
 
 
 def parse_args():
@@ -37,8 +36,6 @@ def parse_args():
                         help='Let RidgeCV normalize the training data. Default: False')
     parser.add_argument('--n_folds', dest='n_folds', type=int, default=5,
                         help='Number of folds for the cross-validation. Default: 5')
-    parser.add_argument('--imputer_n_nearest_features', dest='imputer_n_nearest_features', type=int, default=50,
-                             help='Number of features to use while imputing.')
     if len(sys.argv) == 1:
         print("Received %d inputs instead of %d" % (len(sys.argv), 9))
         parser.print_help()
@@ -69,7 +66,6 @@ def cv_r2score(solver, N, X, y):
         x_test = X[test]
         y_train = y[train]
         y_test = y[test]
-
         fit_solver = solver.fit(x_train, y_train)
         pred_solver_train = fit_solver.predict(x_train)
         pred_solver_test = fit_solver.predict(x_test)
@@ -112,7 +108,7 @@ def main():
           / x_train.size * 100.))
 
     # Data NaNs imputation
-    imp = IterativeImputer(n_nearest_features=options.imputer_n_nearest_features)
+    imp = SimpleImputer(strategy='most_frequent')
     imp.fit(x_train)
     x_train = imp.transform(x_train)
     # Data normalization
@@ -131,11 +127,11 @@ def main():
     print_time_since_checkpoint(checkpoint_time)
     print('\nAPPLY LEARNING METHOD')
     assert(np.isfinite(x_train).all())
-    alphas = np.logspace(-2, 1, num=10)
-    reg = RidgeCV(alphas, fit_intercept=True, cv=None, normalize=options.normalize)\
-        .fit(x_train, y_train)
+    params = {'n_estimators': 200, 'max_depth': 3,
+              'learning_rate': 0.1, 'loss': 'huber'}
+    reg = GradientBoostingRegressor(**params).fit(x_train, y_train.ravel())
     print("Training Coefficient of Determination (R^2): %0.4f" %
-          reg.score(x_train, y_train))
+          reg.score(x_train, y_train.ravel()))
 
     x_test = imp.transform(x_test)
     assert(np.isfinite(x_test).all())
