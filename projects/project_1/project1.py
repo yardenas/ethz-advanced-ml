@@ -6,17 +6,14 @@ Created on Mon Oct  7 13:01:27 2019
 @group : Mlcodebreakers
 """
 
-import time
-import math
 import argparse
 import sys
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-from sklearn.neural_network import  MLPRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, IsolationForest
 from sklearn.model_selection import cross_validate, GridSearchCV
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler, RobustScaler
+from sklearn.preprocessing import RobustScaler
+from sklearn.feature_selection import SelectPercentile
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import IterativeImputer, SimpleImputer, MissingIndicator
 
@@ -76,24 +73,44 @@ def main():
     print('\nDATA NORMALIZATION REPORT')
     print('Mean of X_train:\t', x_train.mean(),
           '\nStd of X_train:\t', x_train.std())
+
+    # Select important features
+    print('\nFEATURES SELECTION')
+    selector = SelectPercentile(percentile=20) \
+        .fit(x_train, y_train.ravel())
+    x_train = selector.transform(x_train)
+    print("Number of features after selection: %d" % x_train.shape[1])
+
+    # Detect outliers
+    print('\nOUTLIER DETECTION')
+    detector = IsolationForest(behaviour='new', max_samples=100,
+                               contamination='auto')
+    detector.fit(x_train)
+    inliers_mask = detector.predict(x_train) == 1
+    x_train = x_train[inliers_mask]
+    print('Found %d outlier samples.' %
+          (inliers_mask.shape[0] - np.sum(inliers_mask)))
+    y_train = y_train[inliers_mask]
+
     print('\nAPPLY LEARNING METHOD')
     assert (np.isfinite(x_train).all() and np.isfinite(y_train).all())
-    params = {'n_estimators': np.linspace(100, 250, num=10, dtype=int),
-              'max_depth': [2, 3],
-              'learning_rate': np.linspace(0.05, 0.15, num=10)}
-    reg = GradientBoostingRegressor(loss='huber')
-    best = GridSearchCV(reg, params, cv=5)
-    best_fit = best.fit(x_train, y_train.ravel())
+    # params = {'n_estimators': np.linspace(100, 250, num=2, dtype=int),
+    #           'max_depth': [2, 3, 4],
+    #           'learning_rate': np.linspace(0.05, 0.15, num=3)}
+    params = {'n_estimators': 200,
+              'max_depth': 3,
+              'learning_rate': 0.1,
+              'loss': 'huber'}
+    reg = GradientBoostingRegressor(**params). \
+        fit(x_train, y_train.ravel())
+    # best = GridSearchCV(reg, params, cv=5)
+    # best_fit = best.fit(x_train, y_train.ravel())
     # reg = RandomForestRegressor(n_estimators=50). \
     #     fit(x_train, y_train.ravel())
-    # reg = MLPRegressor(alpha=10, hidden_layer_sizes=(200, 100, 200),
-    #                    max_iter=5000). \
-    #     fit(x_train, y_train.ravel())
     print("Training Coefficient of Determination (R^2): %0.4f" %
-          best_fit.score(x_train, y_train.ravel()))
+          reg.score(x_train, y_train.ravel()))
     # Cross validate
-    estimator = make_pipeline(best_fit)
-    scores = cross_validate(estimator, x_train, y_train.ravel(),
+    scores = cross_validate(reg, x_train, y_train.ravel(),
                             scoring='r2',
                             return_train_score=True,
                             cv=options.n_folds)
@@ -102,6 +119,7 @@ def main():
     # x_test = imp.transform(x_test)
     assert (np.isfinite(x_test).all())
     x_test = scaler.transform(x_test)
+    x_test = selector.transform(x_test)
     y_pred = reg.predict(x_test)
 
     # Write prediction into solution.csv
