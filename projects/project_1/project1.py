@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.neural_network import  MLPRegressor
-from sklearn.model_selection import cross_validate
+from sklearn.model_selection import cross_validate, GridSearchCV
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler, RobustScaler
 from sklearn.experimental import enable_iterative_imputer
@@ -67,9 +67,9 @@ def main():
                                         / x_train.size * 100.))
 
     # Data NaNs imputation
-    imp = IterativeImputer(n_nearest_features=50)
-    imp.fit(x_train)
-    x_train = imp.transform(x_train)
+    # imp = IterativeImputer(n_nearest_features=125)
+    # imp.fit(x_train)
+    # x_train = imp.transform(x_train)
     # Data normalization
     scaler = RobustScaler().fit(x_train)
     x_train = scaler.transform(x_train)
@@ -78,26 +78,28 @@ def main():
           '\nStd of X_train:\t', x_train.std())
     print('\nAPPLY LEARNING METHOD')
     assert (np.isfinite(x_train).all() and np.isfinite(y_train).all())
-    params = {'n_estimators': 200, 'max_depth': 3,
-              'learning_rate': 0.10, 'loss': 'huber'}
-    reg = GradientBoostingRegressor(**params). \
-        fit(x_train, y_train.ravel())
+    params = {'n_estimators': np.linspace(100, 250, num=10, dtype=int),
+              'max_depth': [2, 3],
+              'learning_rate': np.linspace(0.05, 0.15, num=10)}
+    reg = GradientBoostingRegressor(loss='huber')
+    best = GridSearchCV(reg, params, cv=5)
+    best_fit = best.fit(x_train, y_train.ravel())
     # reg = RandomForestRegressor(n_estimators=50). \
     #     fit(x_train, y_train.ravel())
     # reg = MLPRegressor(alpha=10, hidden_layer_sizes=(200, 100, 200),
     #                    max_iter=5000). \
     #     fit(x_train, y_train.ravel())
     print("Training Coefficient of Determination (R^2): %0.4f" %
-          reg.score(x_train, y_train.ravel()))
+          best_fit.score(x_train, y_train.ravel()))
     # Cross validate
-    estimator = make_pipeline(reg)
+    estimator = make_pipeline(best_fit)
     scores = cross_validate(estimator, x_train, y_train.ravel(),
                             scoring='r2',
                             return_train_score=True,
                             cv=options.n_folds)
     print("Test scores:\t", scores['test_score'],
           '\nTrain scores:\t', scores['train_score'])
-    x_test = imp.transform(x_test)
+    # x_test = imp.transform(x_test)
     assert (np.isfinite(x_test).all())
     x_test = scaler.transform(x_test)
     y_pred = reg.predict(x_test)
