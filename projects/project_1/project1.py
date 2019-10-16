@@ -76,14 +76,14 @@ def main():
 
     # Select important features
     print('\nFEATURES SELECTION')
-    selector = SelectPercentile(percentile=20) \
+    selector = SelectPercentile(percentile=28) \
         .fit(x_train, y_train.ravel())
     x_train = selector.transform(x_train)
     print("Number of features after selection: %d" % x_train.shape[1])
 
     # Detect outliers
     print('\nOUTLIER DETECTION')
-    detector = IsolationForest(behaviour='new', max_samples=100,
+    detector = IsolationForest(behaviour='new', max_samples=200,
                                contamination='auto')
     detector.fit(x_train)
     inliers_mask = detector.predict(x_train) == 1
@@ -97,9 +97,9 @@ def main():
     # params = {'n_estimators': np.linspace(100, 250, num=2, dtype=int),
     #           'max_depth': [2, 3, 4],
     #           'learning_rate': np.linspace(0.05, 0.15, num=3)}
-    params = {'n_estimators': 200,
+    params = {'n_estimators': 350,
               'max_depth': 3,
-              'learning_rate': 0.1,
+              'learning_rate': 0.12,
               'loss': 'huber'}
     reg = GradientBoostingRegressor(**params). \
         fit(x_train, y_train.ravel())
