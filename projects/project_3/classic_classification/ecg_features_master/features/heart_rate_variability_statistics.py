@@ -28,7 +28,6 @@ from ecg_features_master.utils.pyrem_univariate import *
 
 
 class HeartRateVariabilityStatistics:
-
     """
     Generate a dictionary of heart rate variability statistics for one ECG signal.
 
@@ -160,6 +159,7 @@ class HeartRateVariabilityStatistics:
     """
     Compile Features
     """
+
     def get_heart_rate_variability_statistics(self):
         return self.heart_rate_variability_statistics
 
@@ -202,6 +202,7 @@ class HeartRateVariabilityStatistics:
     """
     Pre Processing
     """
+
     @staticmethod
     def normalize_series(series, method='median'):
 
@@ -217,7 +218,7 @@ class HeartRateVariabilityStatistics:
             points = points[:, None]
 
         median = np.median(points, axis=0)
-        diff = np.sum((points - median)**2, axis=-1)
+        diff = np.sum((points - median) ** 2, axis=-1)
         diff = np.sqrt(diff)
         med_abs_deviation = np.median(diff)
         modified_z_score = 0.6745 * diff / med_abs_deviation
@@ -227,7 +228,7 @@ class HeartRateVariabilityStatistics:
     def rri_physiological_filter(self):
 
         # Define physiologically possible interbeat interval range
-        rri_max = 3.0   # 20 bpm
+        rri_max = 3.0  # 20 bpm
         rri_min = 0.25  # 240 bpm
 
         # get indices of physiologically impossible values
@@ -268,7 +269,6 @@ class HeartRateVariabilityStatistics:
                     count += 1
 
             if count >= 2:
-
                 # Get good and bad rpeaks
                 self.rpeaks_secondary = self.rpeaks_bad[np.isfinite(rpeaks)]
 
@@ -309,7 +309,6 @@ class HeartRateVariabilityStatistics:
 
                 # Check to see if shifting the R-Peak improved the correlation coefficient
                 if self.check_improvement(rpeak_corrected, correlation_threshold):
-
                     # Update rpeaks array
                     self.rpeaks[template_id] = rpeak_corrected
 
@@ -403,7 +402,6 @@ class HeartRateVariabilityStatistics:
 
             # Check correlation
             if correlation_coefficient[0, 1] < correlation_threshold:
-
                 # Remove rpeak
                 rpeaks[template_id] = np.nan
 
@@ -501,16 +499,25 @@ class HeartRateVariabilityStatistics:
         heart_rate_statistics = dict()
 
         # Calculate basic statistics
-        if len(heart_rate) > 0:
+        try:
+            if len(heart_rate) > 0:
 
-            heart_rate_statistics['heart_rate_min'] = np.min(heart_rate)
-            heart_rate_statistics['heart_rate_max'] = np.max(heart_rate)
-            heart_rate_statistics['heart_rate_mean'] = np.mean(heart_rate)
-            heart_rate_statistics['heart_rate_median'] = np.median(heart_rate)
-            heart_rate_statistics['heart_rate_std'] = np.std(heart_rate, ddof=1)
-            heart_rate_statistics['heart_rate_skew'] = sp.stats.skew(heart_rate)
-            heart_rate_statistics['heart_rate_kurtosis'] = sp.stats.kurtosis(heart_rate)
-        else:
+                heart_rate_statistics['heart_rate_min'] = np.min(heart_rate)
+                heart_rate_statistics['heart_rate_max'] = np.max(heart_rate)
+                heart_rate_statistics['heart_rate_mean'] = np.mean(heart_rate)
+                heart_rate_statistics['heart_rate_median'] = np.median(heart_rate)
+                heart_rate_statistics['heart_rate_std'] = np.std(heart_rate, ddof=1)
+                heart_rate_statistics['heart_rate_skew'] = sp.stats.skew(heart_rate)
+                heart_rate_statistics['heart_rate_kurtosis'] = sp.stats.kurtosis(heart_rate)
+            else:
+                heart_rate_statistics['heart_rate_min'] = np.nan
+                heart_rate_statistics['heart_rate_max'] = np.nan
+                heart_rate_statistics['heart_rate_mean'] = np.nan
+                heart_rate_statistics['heart_rate_median'] = np.nan
+                heart_rate_statistics['heart_rate_std'] = np.nan
+                heart_rate_statistics['heart_rate_skew'] = np.nan
+                heart_rate_statistics['heart_rate_kurtosis'] = np.nan
+        except:
             heart_rate_statistics['heart_rate_min'] = np.nan
             heart_rate_statistics['heart_rate_max'] = np.nan
             heart_rate_statistics['heart_rate_mean'] = np.nan
@@ -518,28 +525,42 @@ class HeartRateVariabilityStatistics:
             heart_rate_statistics['heart_rate_std'] = np.nan
             heart_rate_statistics['heart_rate_skew'] = np.nan
             heart_rate_statistics['heart_rate_kurtosis'] = np.nan
-
         # Calculate non-linear statistics
-        if len(heart_rate) > 1:
-            heart_rate_statistics['heart_rate_approximate_entropy' + suffix] = \
-                self.safe_check(ap_entropy(heart_rate, M=2, R=0.1*np.std(heart_rate)))
-            heart_rate_statistics['heart_rate_sample_entropy' + suffix] = \
-                self.safe_check(ent.sample_entropy(heart_rate, sample_length=2, tolerance=0.1*np.std(heart_rate))[0])
-            heart_rate_statistics['heart_rate_multiscale_entropy' + suffix] = \
-                self.safe_check(ent.multiscale_entropy(heart_rate, sample_length=2, tolerance=0.1*np.std(heart_rate))[0])
-            heart_rate_statistics['heart_rate_permutation_entropy' + suffix] = \
-                self.safe_check(ent.permutation_entropy(heart_rate, m=2, delay=1))
-            heart_rate_statistics['heart_rate_multiscale_permutation_entropy' + suffix] = \
-                self.safe_check(ent.multiscale_permutation_entropy(heart_rate, m=2, delay=1, scale=1)[0])
-            heart_rate_statistics['heart_rate_fisher_info' + suffix] = fisher_info(heart_rate, tau=1, de=2)
-            hjorth_parameters = hjorth(heart_rate)
-            heart_rate_statistics['heart_rate_activity' + suffix] = hjorth_parameters[0]
-            heart_rate_statistics['heart_rate_complexity' + suffix] = hjorth_parameters[1]
-            heart_rate_statistics['heart_rate_morbidity' + suffix] = hjorth_parameters[2]
-            heart_rate_statistics['heart_rate_hurst_exponent' + suffix] = pfd(heart_rate)
-            heart_rate_statistics['heart_rate_svd_entropy' + suffix] = svd_entropy(heart_rate, tau=2, de=2)
-            heart_rate_statistics['heart_rate_petrosian_fractal_dimension' + suffix] = pfd(heart_rate)
-        else:
+        try:
+            if len(heart_rate) > 1:
+                heart_rate_statistics['heart_rate_approximate_entropy' + suffix] = \
+                    self.safe_check(ap_entropy(heart_rate, M=2, R=0.1 * np.std(heart_rate)))
+                heart_rate_statistics['heart_rate_sample_entropy' + suffix] = \
+                    self.safe_check(ent.sample_entropy(heart_rate, sample_length=2, tolerance=0.1 * np.std(heart_rate))[0])
+                heart_rate_statistics['heart_rate_multiscale_entropy' + suffix] = \
+                    self.safe_check(
+                        ent.multiscale_entropy(heart_rate, sample_length=2, tolerance=0.1 * np.std(heart_rate))[0])
+                heart_rate_statistics['heart_rate_permutation_entropy' + suffix] = \
+                    self.safe_check(ent.permutation_entropy(heart_rate, m=2, delay=1))
+                heart_rate_statistics['heart_rate_multiscale_permutation_entropy' + suffix] = \
+                    self.safe_check(ent.multiscale_permutation_entropy(heart_rate, m=2, delay=1, scale=1)[0])
+                heart_rate_statistics['heart_rate_fisher_info' + suffix] = fisher_info(heart_rate, tau=1, de=2)
+                hjorth_parameters = hjorth(heart_rate)
+                heart_rate_statistics['heart_rate_activity' + suffix] = hjorth_parameters[0]
+                heart_rate_statistics['heart_rate_complexity' + suffix] = hjorth_parameters[1]
+                heart_rate_statistics['heart_rate_morbidity' + suffix] = hjorth_parameters[2]
+                heart_rate_statistics['heart_rate_hurst_exponent' + suffix] = pfd(heart_rate)
+                heart_rate_statistics['heart_rate_svd_entropy' + suffix] = svd_entropy(heart_rate, tau=2, de=2)
+                heart_rate_statistics['heart_rate_petrosian_fractal_dimension' + suffix] = pfd(heart_rate)
+            else:
+                heart_rate_statistics['heart_rate_approximate_entropy' + suffix] = np.nan
+                heart_rate_statistics['heart_rate_sample_entropy' + suffix] = np.nan
+                heart_rate_statistics['heart_rate_multiscale_entropy' + suffix] = np.nan
+                heart_rate_statistics['heart_rate_permutation_entropy' + suffix] = np.nan
+                heart_rate_statistics['heart_rate_multiscale_permutation_entropy' + suffix] = np.nan
+                heart_rate_statistics['heart_rate_fisher_info' + suffix] = np.nan
+                heart_rate_statistics['heart_rate_activity' + suffix] = np.nan
+                heart_rate_statistics['heart_rate_complexity' + suffix] = np.nan
+                heart_rate_statistics['heart_rate_morbidity' + suffix] = np.nan
+                heart_rate_statistics['heart_rate_hurst_exponent' + suffix] = np.nan
+                heart_rate_statistics['heart_rate_svd_entropy' + suffix] = np.nan
+                heart_rate_statistics['heart_rate_petrosian_fractal_dimension' + suffix] = np.nan
+        except:
             heart_rate_statistics['heart_rate_approximate_entropy' + suffix] = np.nan
             heart_rate_statistics['heart_rate_sample_entropy' + suffix] = np.nan
             heart_rate_statistics['heart_rate_multiscale_entropy' + suffix] = np.nan
@@ -561,16 +582,26 @@ class HeartRateVariabilityStatistics:
         rri_temporal_statistics = dict()
 
         # RR interval statistics
-        if len(rri) > 0:
-            rri_temporal_statistics['rri_min' + suffix] = np.min(rri)
-            rri_temporal_statistics['rri_max' + suffix] = np.max(rri)
-            rri_temporal_statistics['rri_mean' + suffix] = np.mean(rri)
-            rri_temporal_statistics['rri_median' + suffix] = np.median(rri)
-            rri_temporal_statistics['rri_std' + suffix] = np.std(rri, ddof=1)
-            rri_temporal_statistics['rri_skew' + suffix] = sp.stats.skew(rri)
-            rri_temporal_statistics['rri_kurtosis' + suffix] = sp.stats.kurtosis(rri)
-            rri_temporal_statistics['rri_rms' + suffix] = np.sqrt(np.mean(np.power(rri, 2)))
-        else:
+        try:
+            if len(rri) > 0:
+                rri_temporal_statistics['rri_min' + suffix] = np.min(rri)
+                rri_temporal_statistics['rri_max' + suffix] = np.max(rri)
+                rri_temporal_statistics['rri_mean' + suffix] = np.mean(rri)
+                rri_temporal_statistics['rri_median' + suffix] = np.median(rri)
+                rri_temporal_statistics['rri_std' + suffix] = np.std(rri, ddof=1)
+                rri_temporal_statistics['rri_skew' + suffix] = sp.stats.skew(rri)
+                rri_temporal_statistics['rri_kurtosis' + suffix] = sp.stats.kurtosis(rri)
+                rri_temporal_statistics['rri_rms' + suffix] = np.sqrt(np.mean(np.power(rri, 2)))
+            else:
+                rri_temporal_statistics['rri_min' + suffix] = np.nan
+                rri_temporal_statistics['rri_max' + suffix] = np.nan
+                rri_temporal_statistics['rri_mean' + suffix] = np.nan
+                rri_temporal_statistics['rri_median' + suffix] = np.nan
+                rri_temporal_statistics['rri_std' + suffix] = np.nan
+                rri_temporal_statistics['rri_skew' + suffix] = np.nan
+                rri_temporal_statistics['rri_kurtosis' + suffix] = np.nan
+                rri_temporal_statistics['rri_rms' + suffix] = np.nan
+        except:
             rri_temporal_statistics['rri_min' + suffix] = np.nan
             rri_temporal_statistics['rri_max' + suffix] = np.nan
             rri_temporal_statistics['rri_mean' + suffix] = np.nan
@@ -581,16 +612,26 @@ class HeartRateVariabilityStatistics:
             rri_temporal_statistics['rri_rms' + suffix] = np.nan
 
         # Differences between successive RR interval differences statistics
-        if len(diff_rri) > 0:
-            rri_temporal_statistics['diff_rri_min' + suffix] = np.min(diff_rri)
-            rri_temporal_statistics['diff_rri_max' + suffix] = np.max(diff_rri)
-            rri_temporal_statistics['diff_rri_mean' + suffix] = np.mean(diff_rri)
-            rri_temporal_statistics['diff_rri_median' + suffix] = np.median(diff_rri)
-            rri_temporal_statistics['diff_rri_std' + suffix] = np.std(diff_rri, ddof=1)
-            rri_temporal_statistics['diff_rri_skew' + suffix] = sp.stats.skew(diff_rri)
-            rri_temporal_statistics['diff_rri_kurtosis' + suffix] = sp.stats.kurtosis(diff_rri)
-            rri_temporal_statistics['diff_rri_rms' + suffix] = np.sqrt(np.mean(np.power(diff_rri, 2)))
-        else:
+        try:
+            if len(diff_rri) > 0:
+                rri_temporal_statistics['diff_rri_min' + suffix] = np.min(diff_rri)
+                rri_temporal_statistics['diff_rri_max' + suffix] = np.max(diff_rri)
+                rri_temporal_statistics['diff_rri_mean' + suffix] = np.mean(diff_rri)
+                rri_temporal_statistics['diff_rri_median' + suffix] = np.median(diff_rri)
+                rri_temporal_statistics['diff_rri_std' + suffix] = np.std(diff_rri, ddof=1)
+                rri_temporal_statistics['diff_rri_skew' + suffix] = sp.stats.skew(diff_rri)
+                rri_temporal_statistics['diff_rri_kurtosis' + suffix] = sp.stats.kurtosis(diff_rri)
+                rri_temporal_statistics['diff_rri_rms' + suffix] = np.sqrt(np.mean(np.power(diff_rri, 2)))
+            else:
+                rri_temporal_statistics['diff_rri_min' + suffix] = np.nan
+                rri_temporal_statistics['diff_rri_max' + suffix] = np.nan
+                rri_temporal_statistics['diff_rri_mean' + suffix] = np.nan
+                rri_temporal_statistics['diff_rri_median' + suffix] = np.nan
+                rri_temporal_statistics['diff_rri_std' + suffix] = np.nan
+                rri_temporal_statistics['diff_rri_skew' + suffix] = np.nan
+                rri_temporal_statistics['diff_rri_kurtosis' + suffix] = np.nan
+                rri_temporal_statistics['diff_rri_rms' + suffix] = np.nan
+        except:
             rri_temporal_statistics['diff_rri_min' + suffix] = np.nan
             rri_temporal_statistics['diff_rri_max' + suffix] = np.nan
             rri_temporal_statistics['diff_rri_mean' + suffix] = np.nan
@@ -600,16 +641,27 @@ class HeartRateVariabilityStatistics:
             rri_temporal_statistics['diff_rri_kurtosis' + suffix] = np.nan
             rri_temporal_statistics['diff_rri_rms' + suffix] = np.nan
 
+
+
         # Differences between successive RR intervals statistics
-        if len(diff2_rri) > 0:
-            rri_temporal_statistics['diff2_rri_min' + suffix] = np.min(diff2_rri)
-            rri_temporal_statistics['diff2_rri_max' + suffix] = np.max(diff2_rri)
-            rri_temporal_statistics['diff2_rri_mean' + suffix] = np.mean(diff2_rri)
-            rri_temporal_statistics['diff2_rri_median' + suffix] = np.median(diff2_rri)
-            rri_temporal_statistics['diff2_rri_std' + suffix] = np.std(diff2_rri, ddof=1)
-            rri_temporal_statistics['diff2_rri_kurtosis' + suffix] = sp.stats.kurtosis(diff2_rri)
-            rri_temporal_statistics['diff2_rri_rms' + suffix] = np.sqrt(np.mean(np.power(diff2_rri, 2)))
-        else:
+        try:
+            if len(diff2_rri) > 0:
+                rri_temporal_statistics['diff2_rri_min' + suffix] = np.min(diff2_rri)
+                rri_temporal_statistics['diff2_rri_max' + suffix] = np.max(diff2_rri)
+                rri_temporal_statistics['diff2_rri_mean' + suffix] = np.mean(diff2_rri)
+                rri_temporal_statistics['diff2_rri_median' + suffix] = np.median(diff2_rri)
+                rri_temporal_statistics['diff2_rri_std' + suffix] = np.std(diff2_rri, ddof=1)
+                rri_temporal_statistics['diff2_rri_kurtosis' + suffix] = sp.stats.kurtosis(diff2_rri)
+                rri_temporal_statistics['diff2_rri_rms' + suffix] = np.sqrt(np.mean(np.power(diff2_rri, 2)))
+            else:
+                rri_temporal_statistics['diff2_rri_min' + suffix] = np.nan
+                rri_temporal_statistics['diff2_rri_max' + suffix] = np.nan
+                rri_temporal_statistics['diff2_rri_mean' + suffix] = np.nan
+                rri_temporal_statistics['diff2_rri_median' + suffix] = np.nan
+                rri_temporal_statistics['diff2_rri_std' + suffix] = np.nan
+                rri_temporal_statistics['diff2_rri_kurtosis' + suffix] = np.nan
+                rri_temporal_statistics['diff2_rri_rms' + suffix] = np.nan
+        except:
             rri_temporal_statistics['diff2_rri_min' + suffix] = np.nan
             rri_temporal_statistics['diff2_rri_max' + suffix] = np.nan
             rri_temporal_statistics['diff2_rri_mean' + suffix] = np.nan
@@ -619,24 +671,41 @@ class HeartRateVariabilityStatistics:
             rri_temporal_statistics['diff2_rri_rms' + suffix] = np.nan
 
         # pNN statistics
-        if len(diff_rri) > 0:
-            rri_temporal_statistics['pnn01' + suffix] = self.pnn(diff_rri, 0.001)
-            rri_temporal_statistics['pnn10' + suffix] = self.pnn(diff_rri, 0.01)
-            rri_temporal_statistics['pnn20' + suffix] = self.pnn(diff_rri, 0.02)
-            rri_temporal_statistics['pnn30' + suffix] = self.pnn(diff_rri, 0.03)
-            rri_temporal_statistics['pnn40' + suffix] = self.pnn(diff_rri, 0.04)
-            rri_temporal_statistics['pnn50' + suffix] = self.pnn(diff_rri, 0.05)
-            rri_temporal_statistics['pnn60' + suffix] = self.pnn(diff_rri, 0.06)
-            rri_temporal_statistics['pnn70' + suffix] = self.pnn(diff_rri, 0.07)
-            rri_temporal_statistics['pnn80' + suffix] = self.pnn(diff_rri, 0.08)
-            rri_temporal_statistics['pnn90' + suffix] = self.pnn(diff_rri, 0.09)
-            rri_temporal_statistics['pnn100' + suffix] = self.pnn(diff_rri, 0.1)
-            rri_temporal_statistics['pnn200' + suffix] = self.pnn(diff_rri, 0.2)
-            rri_temporal_statistics['pnn400' + suffix] = self.pnn(diff_rri, 0.4)
-            rri_temporal_statistics['pnn600' + suffix] = self.pnn(diff_rri, 0.6)
-            rri_temporal_statistics['pnn800' + suffix] = self.pnn(diff_rri, 0.8)
+        try:
+            if len(diff_rri) > 0:
+                rri_temporal_statistics['pnn01' + suffix] = self.pnn(diff_rri, 0.001)
+                rri_temporal_statistics['pnn10' + suffix] = self.pnn(diff_rri, 0.01)
+                rri_temporal_statistics['pnn20' + suffix] = self.pnn(diff_rri, 0.02)
+                rri_temporal_statistics['pnn30' + suffix] = self.pnn(diff_rri, 0.03)
+                rri_temporal_statistics['pnn40' + suffix] = self.pnn(diff_rri, 0.04)
+                rri_temporal_statistics['pnn50' + suffix] = self.pnn(diff_rri, 0.05)
+                rri_temporal_statistics['pnn60' + suffix] = self.pnn(diff_rri, 0.06)
+                rri_temporal_statistics['pnn70' + suffix] = self.pnn(diff_rri, 0.07)
+                rri_temporal_statistics['pnn80' + suffix] = self.pnn(diff_rri, 0.08)
+                rri_temporal_statistics['pnn90' + suffix] = self.pnn(diff_rri, 0.09)
+                rri_temporal_statistics['pnn100' + suffix] = self.pnn(diff_rri, 0.1)
+                rri_temporal_statistics['pnn200' + suffix] = self.pnn(diff_rri, 0.2)
+                rri_temporal_statistics['pnn400' + suffix] = self.pnn(diff_rri, 0.4)
+                rri_temporal_statistics['pnn600' + suffix] = self.pnn(diff_rri, 0.6)
+                rri_temporal_statistics['pnn800' + suffix] = self.pnn(diff_rri, 0.8)
 
-        else:
+            else:
+                rri_temporal_statistics['pnn01' + suffix] = np.nan
+                rri_temporal_statistics['pnn10' + suffix] = np.nan
+                rri_temporal_statistics['pnn20' + suffix] = np.nan
+                rri_temporal_statistics['pnn30' + suffix] = np.nan
+                rri_temporal_statistics['pnn40' + suffix] = np.nan
+                rri_temporal_statistics['pnn50' + suffix] = np.nan
+                rri_temporal_statistics['pnn60' + suffix] = np.nan
+                rri_temporal_statistics['pnn70' + suffix] = np.nan
+                rri_temporal_statistics['pnn80' + suffix] = np.nan
+                rri_temporal_statistics['pnn90' + suffix] = np.nan
+                rri_temporal_statistics['pnn100' + suffix] = np.nan
+                rri_temporal_statistics['pnn200' + suffix] = np.nan
+                rri_temporal_statistics['pnn400' + suffix] = np.nan
+                rri_temporal_statistics['pnn600' + suffix] = np.nan
+                rri_temporal_statistics['pnn800' + suffix] = np.nan
+        except:
             rri_temporal_statistics['pnn01' + suffix] = np.nan
             rri_temporal_statistics['pnn10' + suffix] = np.nan
             rri_temporal_statistics['pnn20' + suffix] = np.nan
@@ -652,7 +721,6 @@ class HeartRateVariabilityStatistics:
             rri_temporal_statistics['pnn400' + suffix] = np.nan
             rri_temporal_statistics['pnn600' + suffix] = np.nan
             rri_temporal_statistics['pnn800' + suffix] = np.nan
-
         return rri_temporal_statistics
 
     @staticmethod
@@ -663,7 +731,7 @@ class HeartRateVariabilityStatistics:
         # Avoid IndexError for  random_list[i+1]
         for i in range(len(random_list) - 1):
             # Check if the next number is consecutive
-            if random_list[i] + 1 == random_list[i+1]:
+            if random_list[i] + 1 == random_list[i + 1]:
                 count += 1
             else:
                 # If it is not append the count and restart counting
@@ -680,26 +748,40 @@ class HeartRateVariabilityStatistics:
         rri_nonlinear_statistics = dict()
 
         # Non-linear RR statistics
-        if len(rri) > 1:
-            rri_nonlinear_statistics['rri_approximate_entropy' + suffix] = \
-                self.safe_check(ap_entropy(rri, M=2, R=0.1*np.std(rri)))
-            rri_nonlinear_statistics['rri_sample_entropy' + suffix] = \
-                self.safe_check(ent.sample_entropy(rri, sample_length=2, tolerance=0.1*np.std(rri))[0])
-            rri_nonlinear_statistics['rri_multiscale_entropy' + suffix] = \
-                self.safe_check(ent.multiscale_entropy(rri, sample_length=2, tolerance=0.1*np.std(rri))[0])
-            rri_nonlinear_statistics['rri_permutation_entropy' + suffix] = \
-                self.safe_check(ent.permutation_entropy(rri, m=2, delay=1))
-            rri_nonlinear_statistics['rri_multiscale_permutation_entropy' + suffix] = \
-                self.safe_check(ent.multiscale_permutation_entropy(rri, m=2, delay=1, scale=1)[0])
-            rri_nonlinear_statistics['rri_fisher_info' + suffix] = fisher_info(rri, tau=1, de=2)
-            hjorth_parameters = hjorth(rri)
-            rri_nonlinear_statistics['rri_activity' + suffix] = hjorth_parameters[0]
-            rri_nonlinear_statistics['rri_complexity' + suffix] = hjorth_parameters[1]
-            rri_nonlinear_statistics['rri_morbidity' + suffix] = hjorth_parameters[2]
-            rri_nonlinear_statistics['rri_hurst_exponent' + suffix] = pfd(rri)
-            rri_nonlinear_statistics['rri_svd_entropy' + suffix] = svd_entropy(rri, tau=2, de=2)
-            rri_nonlinear_statistics['rri_petrosian_fractal_dimension' + suffix] = pfd(rri)
-        else:
+        try:
+            if len(rri) > 1:
+                rri_nonlinear_statistics['rri_approximate_entropy' + suffix] = \
+                    self.safe_check(ap_entropy(rri, M=2, R=0.1 * np.std(rri)))
+                rri_nonlinear_statistics['rri_sample_entropy' + suffix] = \
+                    self.safe_check(ent.sample_entropy(rri, sample_length=2, tolerance=0.1 * np.std(rri))[0])
+                rri_nonlinear_statistics['rri_multiscale_entropy' + suffix] = \
+                    self.safe_check(ent.multiscale_entropy(rri, sample_length=2, tolerance=0.1 * np.std(rri))[0])
+                rri_nonlinear_statistics['rri_permutation_entropy' + suffix] = \
+                    self.safe_check(ent.permutation_entropy(rri, m=2, delay=1))
+                rri_nonlinear_statistics['rri_multiscale_permutation_entropy' + suffix] = \
+                    self.safe_check(ent.multiscale_permutation_entropy(rri, m=2, delay=1, scale=1)[0])
+                rri_nonlinear_statistics['rri_fisher_info' + suffix] = fisher_info(rri, tau=1, de=2)
+                hjorth_parameters = hjorth(rri)
+                rri_nonlinear_statistics['rri_activity' + suffix] = hjorth_parameters[0]
+                rri_nonlinear_statistics['rri_complexity' + suffix] = hjorth_parameters[1]
+                rri_nonlinear_statistics['rri_morbidity' + suffix] = hjorth_parameters[2]
+                rri_nonlinear_statistics['rri_hurst_exponent' + suffix] = pfd(rri)
+                rri_nonlinear_statistics['rri_svd_entropy' + suffix] = svd_entropy(rri, tau=2, de=2)
+                rri_nonlinear_statistics['rri_petrosian_fractal_dimension' + suffix] = pfd(rri)
+            else:
+                rri_nonlinear_statistics['rri_approximate_entropy' + suffix] = np.nan
+                rri_nonlinear_statistics['rri_sample_entropy' + suffix] = np.nan
+                rri_nonlinear_statistics['rri_multiscale_entropy' + suffix] = np.nan
+                rri_nonlinear_statistics['rri_permutation_entropy' + suffix] = np.nan
+                rri_nonlinear_statistics['rri_multiscale_permutation_entropy' + suffix] = np.nan
+                rri_nonlinear_statistics['rri_fisher_info' + suffix] = np.nan
+                rri_nonlinear_statistics['rri_activity' + suffix] = np.nan
+                rri_nonlinear_statistics['rri_complexity' + suffix] = np.nan
+                rri_nonlinear_statistics['rri_morbidity' + suffix] = np.nan
+                rri_nonlinear_statistics['rri_hurst_exponent' + suffix] = np.nan
+                rri_nonlinear_statistics['rri_svd_entropy' + suffix] = np.nan
+                rri_nonlinear_statistics['rri_petrosian_fractal_dimension' + suffix] = np.nan
+        except:
             rri_nonlinear_statistics['rri_approximate_entropy' + suffix] = np.nan
             rri_nonlinear_statistics['rri_sample_entropy' + suffix] = np.nan
             rri_nonlinear_statistics['rri_multiscale_entropy' + suffix] = np.nan
@@ -712,28 +794,41 @@ class HeartRateVariabilityStatistics:
             rri_nonlinear_statistics['rri_hurst_exponent' + suffix] = np.nan
             rri_nonlinear_statistics['rri_svd_entropy' + suffix] = np.nan
             rri_nonlinear_statistics['rri_petrosian_fractal_dimension' + suffix] = np.nan
-
         # Non-linear RR difference statistics
-        if len(diff_rri) > 1:
-            rri_nonlinear_statistics['diff_rri_approximate_entropy' + suffix] = \
-                self.safe_check(ap_entropy(diff_rri, M=2, R=0.1*np.std(rri)))
-            rri_nonlinear_statistics['diff_rri_sample_entropy' + suffix] = \
-                self.safe_check(ent.sample_entropy(diff_rri, sample_length=2, tolerance=0.1*np.std(rri))[0])
-            rri_nonlinear_statistics['diff_rri_multiscale_entropy' + suffix] = \
-                self.safe_check(ent.multiscale_entropy(diff_rri, sample_length=2, tolerance=0.1*np.std(rri))[0])
-            rri_nonlinear_statistics['diff_rri_permutation_entropy' + suffix] = \
-                self.safe_check(ent.permutation_entropy(diff_rri, m=2, delay=1))
-            rri_nonlinear_statistics['diff_rri_multiscale_permutation_entropy' + suffix] = \
-                self.safe_check(ent.multiscale_permutation_entropy(diff_rri, m=2, delay=1, scale=1)[0])
-            rri_nonlinear_statistics['diff_rri_fisher_info' + suffix] = fisher_info(diff_rri, tau=1, de=2)
-            hjorth_parameters = hjorth(diff_rri)
-            rri_nonlinear_statistics['diff_rri_activity' + suffix] = hjorth_parameters[0]
-            rri_nonlinear_statistics['diff_rri_complexity' + suffix] = hjorth_parameters[1]
-            rri_nonlinear_statistics['diff_rri_morbidity' + suffix] = hjorth_parameters[2]
-            rri_nonlinear_statistics['diff_rri_hurst_exponent' + suffix] = pfd(diff_rri)
-            rri_nonlinear_statistics['diff_rri_svd_entropy' + suffix] = svd_entropy(diff_rri, tau=2, de=2)
-            rri_nonlinear_statistics['diff_rri_petrosian_fractal_dimension' + suffix] = pfd(diff_rri)
-        else:
+        try:
+            if len(diff_rri) > 1:
+                rri_nonlinear_statistics['diff_rri_approximate_entropy' + suffix] = \
+                    self.safe_check(ap_entropy(diff_rri, M=2, R=0.1 * np.std(rri)))
+                rri_nonlinear_statistics['diff_rri_sample_entropy' + suffix] = \
+                    self.safe_check(ent.sample_entropy(diff_rri, sample_length=2, tolerance=0.1 * np.std(rri))[0])
+                rri_nonlinear_statistics['diff_rri_multiscale_entropy' + suffix] = \
+                    self.safe_check(ent.multiscale_entropy(diff_rri, sample_length=2, tolerance=0.1 * np.std(rri))[0])
+                rri_nonlinear_statistics['diff_rri_permutation_entropy' + suffix] = \
+                    self.safe_check(ent.permutation_entropy(diff_rri, m=2, delay=1))
+                rri_nonlinear_statistics['diff_rri_multiscale_permutation_entropy' + suffix] = \
+                    self.safe_check(ent.multiscale_permutation_entropy(diff_rri, m=2, delay=1, scale=1)[0])
+                rri_nonlinear_statistics['diff_rri_fisher_info' + suffix] = fisher_info(diff_rri, tau=1, de=2)
+                hjorth_parameters = hjorth(diff_rri)
+                rri_nonlinear_statistics['diff_rri_activity' + suffix] = hjorth_parameters[0]
+                rri_nonlinear_statistics['diff_rri_complexity' + suffix] = hjorth_parameters[1]
+                rri_nonlinear_statistics['diff_rri_morbidity' + suffix] = hjorth_parameters[2]
+                rri_nonlinear_statistics['diff_rri_hurst_exponent' + suffix] = pfd(diff_rri)
+                rri_nonlinear_statistics['diff_rri_svd_entropy' + suffix] = svd_entropy(diff_rri, tau=2, de=2)
+                rri_nonlinear_statistics['diff_rri_petrosian_fractal_dimension' + suffix] = pfd(diff_rri)
+            else:
+                rri_nonlinear_statistics['diff_rri_approximate_entropy' + suffix] = np.nan
+                rri_nonlinear_statistics['diff_rri_sample_entropy' + suffix] = np.nan
+                rri_nonlinear_statistics['diff_rri_multiscale_entropy' + suffix] = np.nan
+                rri_nonlinear_statistics['diff_rri_permutation_entropy' + suffix] = np.nan
+                rri_nonlinear_statistics['diff_rri_multiscale_permutation_entropy' + suffix] = np.nan
+                rri_nonlinear_statistics['diff_rri_fisher_info' + suffix] = np.nan
+                rri_nonlinear_statistics['diff_rri_activity' + suffix] = np.nan
+                rri_nonlinear_statistics['diff_rri_complexity' + suffix] = np.nan
+                rri_nonlinear_statistics['diff_rri_morbidity' + suffix] = np.nan
+                rri_nonlinear_statistics['diff_rri_hurst_exponent' + suffix] = np.nan
+                rri_nonlinear_statistics['diff_rri_svd_entropy' + suffix] = np.nan
+                rri_nonlinear_statistics['diff_rri_petrosian_fractal_dimension' + suffix] = np.nan
+        except:
             rri_nonlinear_statistics['diff_rri_approximate_entropy' + suffix] = np.nan
             rri_nonlinear_statistics['diff_rri_sample_entropy' + suffix] = np.nan
             rri_nonlinear_statistics['diff_rri_multiscale_entropy' + suffix] = np.nan
@@ -747,29 +842,45 @@ class HeartRateVariabilityStatistics:
             rri_nonlinear_statistics['diff_rri_svd_entropy' + suffix] = np.nan
             rri_nonlinear_statistics['diff_rri_petrosian_fractal_dimension' + suffix] = np.nan
 
+
         # Non-linear RR difference difference statistics
-        if len(diff2_rri) > 1:
-            rri_nonlinear_statistics['diff2_rri_shannon_entropy' + suffix] = \
-                self.safe_check(ent.shannon_entropy(diff2_rri))
-            rri_nonlinear_statistics['diff2_rri_approximate_entropy' + suffix] = \
-                self.safe_check(ap_entropy(diff2_rri, M=2, R=0.1*np.std(rri)))
-            rri_nonlinear_statistics['diff2_rri_sample_entropy' + suffix] = \
-                self.safe_check(ent.sample_entropy(diff2_rri, sample_length=2, tolerance=0.1*np.std(rri))[0])
-            rri_nonlinear_statistics['diff2_rri_multiscale_entropy' + suffix] = \
-                self.safe_check(ent.multiscale_entropy(diff2_rri, sample_length=2, tolerance=0.1*np.std(rri))[0])
-            rri_nonlinear_statistics['diff2_rri_permutation_entropy' + suffix] = \
-                self.safe_check(ent.permutation_entropy(diff2_rri, m=2, delay=1))
-            rri_nonlinear_statistics['diff2_rri_multiscale_permutation_entropy' + suffix] = \
-                self.safe_check(ent.multiscale_permutation_entropy(diff2_rri, m=2, delay=1, scale=1)[0])
-            rri_nonlinear_statistics['diff2_rri_fisher_info' + suffix] = fisher_info(diff2_rri, tau=1, de=2)
-            hjorth_parameters = hjorth(diff2_rri)
-            rri_nonlinear_statistics['diff2_rri_activity' + suffix] = hjorth_parameters[0]
-            rri_nonlinear_statistics['diff2_rri_complexity' + suffix] = hjorth_parameters[1]
-            rri_nonlinear_statistics['diff2_rri_morbidity' + suffix] = hjorth_parameters[2]
-            rri_nonlinear_statistics['diff2_rri_hurst_exponent' + suffix] = pfd(diff2_rri)
-            rri_nonlinear_statistics['diff2_rri_svd_entropy' + suffix] = svd_entropy(diff2_rri, tau=2, de=2)
-            rri_nonlinear_statistics['diff2_rri_petrosian_fractal_dimension' + suffix] = pfd(diff2_rri)
-        else:
+        try:
+            if len(diff2_rri) > 1:
+                rri_nonlinear_statistics['diff2_rri_shannon_entropy' + suffix] = \
+                    self.safe_check(ent.shannon_entropy(diff2_rri))
+                rri_nonlinear_statistics['diff2_rri_approximate_entropy' + suffix] = \
+                    self.safe_check(ap_entropy(diff2_rri, M=2, R=0.1 * np.std(rri)))
+                rri_nonlinear_statistics['diff2_rri_sample_entropy' + suffix] = \
+                    self.safe_check(ent.sample_entropy(diff2_rri, sample_length=2, tolerance=0.1 * np.std(rri))[0])
+                rri_nonlinear_statistics['diff2_rri_multiscale_entropy' + suffix] = \
+                    self.safe_check(ent.multiscale_entropy(diff2_rri, sample_length=2, tolerance=0.1 * np.std(rri))[0])
+                rri_nonlinear_statistics['diff2_rri_permutation_entropy' + suffix] = \
+                    self.safe_check(ent.permutation_entropy(diff2_rri, m=2, delay=1))
+                rri_nonlinear_statistics['diff2_rri_multiscale_permutation_entropy' + suffix] = \
+                    self.safe_check(ent.multiscale_permutation_entropy(diff2_rri, m=2, delay=1, scale=1)[0])
+                rri_nonlinear_statistics['diff2_rri_fisher_info' + suffix] = fisher_info(diff2_rri, tau=1, de=2)
+                hjorth_parameters = hjorth(diff2_rri)
+                rri_nonlinear_statistics['diff2_rri_activity' + suffix] = hjorth_parameters[0]
+                rri_nonlinear_statistics['diff2_rri_complexity' + suffix] = hjorth_parameters[1]
+                rri_nonlinear_statistics['diff2_rri_morbidity' + suffix] = hjorth_parameters[2]
+                rri_nonlinear_statistics['diff2_rri_hurst_exponent' + suffix] = pfd(diff2_rri)
+                rri_nonlinear_statistics['diff2_rri_svd_entropy' + suffix] = svd_entropy(diff2_rri, tau=2, de=2)
+                rri_nonlinear_statistics['diff2_rri_petrosian_fractal_dimension' + suffix] = pfd(diff2_rri)
+            else:
+                rri_nonlinear_statistics['diff2_rri_shannon_entropy' + suffix] = np.nan
+                rri_nonlinear_statistics['diff2_rri_approximate_entropy' + suffix] = np.nan
+                rri_nonlinear_statistics['diff2_rri_sample_entropy' + suffix] = np.nan
+                rri_nonlinear_statistics['diff2_rri_multiscale_entropy' + suffix] = np.nan
+                rri_nonlinear_statistics['diff2_rri_permutation_entropy' + suffix] = np.nan
+                rri_nonlinear_statistics['diff2_rri_multiscale_permutation_entropy' + suffix] = np.nan
+                rri_nonlinear_statistics['diff2_rri_fisher_info' + suffix] = np.nan
+                rri_nonlinear_statistics['diff2_rri_activity' + suffix] = np.nan
+                rri_nonlinear_statistics['diff2_rri_complexity' + suffix] = np.nan
+                rri_nonlinear_statistics['diff2_rri_morbidity' + suffix] = np.nan
+                rri_nonlinear_statistics['diff2_rri_hurst_exponent' + suffix] = np.nan
+                rri_nonlinear_statistics['diff2_rri_svd_entropy' + suffix] = np.nan
+                rri_nonlinear_statistics['diff2_rri_petrosian_fractal_dimension' + suffix] = np.nan
+        except:
             rri_nonlinear_statistics['diff2_rri_shannon_entropy' + suffix] = np.nan
             rri_nonlinear_statistics['diff2_rri_approximate_entropy' + suffix] = np.nan
             rri_nonlinear_statistics['diff2_rri_sample_entropy' + suffix] = np.nan
@@ -804,9 +915,18 @@ class HeartRateVariabilityStatistics:
         pearson_correlation_statistics = dict()
 
         # Calculate Pearson correlation
-        pearson_coeff_p1, pearson_p_value_p1 = sp.stats.pearsonr(rri[0:-2], rri[1:-1])
-        pearson_coeff_p2, pearson_p_value_p2 = sp.stats.pearsonr(rri[0:-3], rri[2:-1])
-        pearson_coeff_p3, pearson_p_value_p3 = sp.stats.pearsonr(rri[0:-4], rri[3:-1])
+        try:
+            pearson_coeff_p1, pearson_p_value_p1 = sp.stats.pearsonr(rri[0:-2], rri[1:-1])
+        except ValueError:
+            pearson_coeff_p1, pearson_p_value_p1 = np.nan, np.nan
+        try:
+            pearson_coeff_p2, pearson_p_value_p2 = sp.stats.pearsonr(rri[0:-3], rri[2:-1])
+        except ValueError:
+            pearson_coeff_p2, pearson_p_value_p2 = np.nan, np.nan
+        try:
+            pearson_coeff_p3, pearson_p_value_p3 = sp.stats.pearsonr(rri[0:-4], rri[3:-1])
+        except ValueError:
+            pearson_coeff_p3, pearson_p_value_p3 = np.nan, np.nan
 
         # Get features
         pearson_correlation_statistics['rri_p1_pearson_coeff' + suffix] = pearson_coeff_p1
@@ -823,14 +943,16 @@ class HeartRateVariabilityStatistics:
 
         # Empty dictionary
         spearmanr_correlation_statistics = dict()
-
+        try:
         # Calculate Pearson correlation
-        spearmanr_coeff_p1, spearmanr_p_value_p1 = sp.stats.spearmanr(rri[0:-2], rri[1:-1])
+            spearmanr_coeff_p1, spearmanr_p_value_p1 = sp.stats.spearmanr(rri[0:-2], rri[1:-1])
 
         # Get features
-        spearmanr_correlation_statistics['rri_p1_spearmanr_coeff' + suffix] = spearmanr_coeff_p1
-        spearmanr_correlation_statistics['rri_p1_spearmanr_p_value' + suffix] = spearmanr_p_value_p1
-
+            spearmanr_correlation_statistics['rri_p1_spearmanr_coeff' + suffix] = spearmanr_coeff_p1
+            spearmanr_correlation_statistics['rri_p1_spearmanr_p_value' + suffix] = spearmanr_p_value_p1
+        except:
+            spearmanr_correlation_statistics['rri_p1_spearmanr_coeff' + suffix] = np.nan
+            spearmanr_correlation_statistics['rri_p1_spearmanr_p_value' + suffix] = np.nan
         return spearmanr_correlation_statistics
 
     @staticmethod
@@ -838,14 +960,16 @@ class HeartRateVariabilityStatistics:
 
         # Empty dictionary
         kendalltau_correlation_statistics = dict()
-
+        try:
         # Calculate Pearson correlation
-        kendalltau_coeff_p1, kendalltau_p_value_p1 = sp.stats.kendalltau(rri[0:-2], rri[1:-1])
+            kendalltau_coeff_p1, kendalltau_p_value_p1 = sp.stats.kendalltau(rri[0:-2], rri[1:-1])
 
         # Get features
-        kendalltau_correlation_statistics['rri_p1_kendalltau_coeff' + suffix] = kendalltau_coeff_p1
-        kendalltau_correlation_statistics['rri_p1_kendalltau_p_value' + suffix] = kendalltau_p_value_p1
-
+            kendalltau_correlation_statistics['rri_p1_kendalltau_coeff' + suffix] = kendalltau_coeff_p1
+            kendalltau_correlation_statistics['rri_p1_kendalltau_p_value' + suffix] = kendalltau_p_value_p1
+        except:
+            kendalltau_correlation_statistics['rri_p1_kendalltau_coeff' + suffix] = np.nan
+            kendalltau_correlation_statistics['rri_p1_kendalltau_p_value' + suffix] = np.nan
         return kendalltau_correlation_statistics
 
     @staticmethod
@@ -855,7 +979,10 @@ class HeartRateVariabilityStatistics:
         pointbiserialr_correlation_statistics = dict()
 
         # Calculate Pearson correlation
-        pointbiserialr_coeff_p1, pointbiserialr_p_value_p1 = sp.stats.pointbiserialr(rri[0:-2], rri[1:-1])
+        try:
+            pointbiserialr_coeff_p1, pointbiserialr_p_value_p1 = sp.stats.pointbiserialr(rri[0:-2], rri[1:-1])
+        except ValueError:
+            pointbiserialr_coeff_p1, pointbiserialr_p_value_p1 = np.nan, np.nan
 
         # Get features
         pointbiserialr_correlation_statistics['rri_p1_pointbiserialr_coeff' + suffix] = pointbiserialr_coeff_p1
@@ -894,62 +1021,72 @@ class HeartRateVariabilityStatistics:
 
         # Empty dictionary
         rri_spectral_statistics = dict()
+        try:
+            if len(rri) > 3:
 
-        if len(rri) > 3:
+                # Zero the time array
+                rri_ts = rri_ts - rri_ts[0]
 
-            # Zero the time array
-            rri_ts = rri_ts - rri_ts[0]
+                # Set resampling rate
+                fs = 10  # Hz
 
-            # Set resampling rate
-            fs = 10  # Hz
+                # Generate new resampling time array
+                rri_ts_interp = np.arange(rri_ts[0], rri_ts[-1], 1 / float(fs))
 
-            # Generate new resampling time array
-            rri_ts_interp = np.arange(rri_ts[0], rri_ts[-1], 1 / float(fs))
+                # Setup interpolation function
+                tck = interpolate.splrep(rri_ts, rri, s=0)
 
-            # Setup interpolation function
-            tck = interpolate.splrep(rri_ts, rri, s=0)
+                # Interpolate rri on new time array
+                rri_interp = interpolate.splev(rri_ts_interp, tck, der=0)
 
-            # Interpolate rri on new time array
-            rri_interp = interpolate.splev(rri_ts_interp, tck, der=0)
+                # Set frequency band limits [Hz]
+                vlf_band = (0, 0.04)  # Very low frequency
+                lf_band = (0.04, 0.15)  # Low frequency
+                hf_band = (0.15, 0.6)  # High frequency
+                vhf_band = (0.6, 2)  # High frequency
 
-            # Set frequency band limits [Hz]
-            vlf_band = (0, 0.04)    # Very low frequency
-            lf_band = (0.04, 0.15)  # Low frequency
-            hf_band = (0.15, 0.6)   # High frequency
-            vhf_band = (0.6, 2)   # High frequency
+                # Compute Welch periodogram
+                fxx, pxx = signal.welch(x=rri_interp, fs=fs)
 
-            # Compute Welch periodogram
-            fxx, pxx = signal.welch(x=rri_interp, fs=fs)
+                # Get frequency band indices
+                vlf_index = np.logical_and(fxx >= vlf_band[0], fxx < vlf_band[1])
+                lf_index = np.logical_and(fxx >= lf_band[0], fxx < lf_band[1])
+                hf_index = np.logical_and(fxx >= hf_band[0], fxx < hf_band[1])
+                vhf_index = np.logical_and(fxx >= vhf_band[0], fxx < vhf_band[1])
 
-            # Get frequency band indices
-            vlf_index = np.logical_and(fxx >= vlf_band[0], fxx < vlf_band[1])
-            lf_index = np.logical_and(fxx >= lf_band[0], fxx < lf_band[1])
-            hf_index = np.logical_and(fxx >= hf_band[0], fxx < hf_band[1])
-            vhf_index = np.logical_and(fxx >= vhf_band[0], fxx < vhf_band[1])
+                # Compute power in each frequency band
+                vlf_power = np.trapz(y=pxx[vlf_index], x=fxx[vlf_index])
+                lf_power = np.trapz(y=pxx[lf_index], x=fxx[lf_index])
+                hf_power = np.trapz(y=pxx[hf_index], x=fxx[hf_index])
+                vhf_power = np.trapz(y=pxx[vhf_index], x=fxx[vhf_index])
 
-            # Compute power in each frequency band
-            vlf_power = np.trapz(y=pxx[vlf_index], x=fxx[vlf_index])
-            lf_power = np.trapz(y=pxx[lf_index], x=fxx[lf_index])
-            hf_power = np.trapz(y=pxx[hf_index], x=fxx[hf_index])
-            vhf_power = np.trapz(y=pxx[vhf_index], x=fxx[vhf_index])
+                # Compute total power
+                total_power = vlf_power + lf_power + hf_power + vhf_power
 
-            # Compute total power
-            total_power = vlf_power + lf_power + hf_power + vhf_power
+                # Compute spectral ratios
+                rri_spectral_statistics['rri_low_high_spectral_ratio' + suffix] = lf_power / hf_power
+                rri_spectral_statistics['rri_low_very_high_spectral_ratio' + suffix] = lf_power / vhf_power
+                rri_spectral_statistics['rri_low_frequency_power' + suffix] = (lf_power / total_power) * 100
+                rri_spectral_statistics['rri_high_frequency_power' + suffix] = (hf_power / total_power) * 100
+                rri_spectral_statistics['rri_very_high_frequency_power' + suffix] = (vhf_power / total_power) * 100
+                rri_spectral_statistics['rri_freq_max_frequency_power' + suffix] = \
+                    fxx[np.argmax(pxx[np.logical_and(fxx >= lf_band[0], fxx < vhf_band[1])])]
+                rri_spectral_statistics['rri_power_max_frequency_power' + suffix] = \
+                    np.max(pxx[np.logical_and(fxx >= lf_band[0], fxx < vhf_band[1])])
+                rri_spectral_statistics['rri_spectral_entropy' + suffix] = \
+                    spectral_entropy(rri_interp, sampling_freq=fs, bands=[0.04, 0.15, 0.4])
 
-            # Compute spectral ratios
-            rri_spectral_statistics['rri_low_high_spectral_ratio' + suffix] = lf_power / hf_power
-            rri_spectral_statistics['rri_low_very_high_spectral_ratio' + suffix] = lf_power / vhf_power
-            rri_spectral_statistics['rri_low_frequency_power' + suffix] = (lf_power / total_power) * 100
-            rri_spectral_statistics['rri_high_frequency_power' + suffix] = (hf_power / total_power) * 100
-            rri_spectral_statistics['rri_very_high_frequency_power' + suffix] = (vhf_power / total_power) * 100
-            rri_spectral_statistics['rri_freq_max_frequency_power' + suffix] = \
-                fxx[np.argmax(pxx[np.logical_and(fxx >= lf_band[0], fxx < vhf_band[1])])]
-            rri_spectral_statistics['rri_power_max_frequency_power' + suffix] = \
-                np.max(pxx[np.logical_and(fxx >= lf_band[0], fxx < vhf_band[1])])
-            rri_spectral_statistics['rri_spectral_entropy' + suffix] = \
-                spectral_entropy(rri_interp, sampling_freq=fs, bands=[0.04, 0.15, 0.4])
-
-        else:
+            else:
+                # Compute spectral ratios
+                rri_spectral_statistics['rri_low_high_spectral_ratio' + suffix] = np.nan
+                rri_spectral_statistics['rri_low_very_high_spectral_ratio' + suffix] = np.nan
+                rri_spectral_statistics['rri_low_frequency_power' + suffix] = np.nan
+                rri_spectral_statistics['rri_high_frequency_power' + suffix] = np.nan
+                rri_spectral_statistics['rri_very_high_frequency_power' + suffix] = np.nan
+                rri_spectral_statistics['rri_freq_max_frequency_power' + suffix] = np.nan
+                rri_spectral_statistics['rri_power_max_frequency_power' + suffix] = np.nan
+                rri_spectral_statistics['rri_spectral_entropy' + suffix] = np.nan
+        except:
             # Compute spectral ratios
             rri_spectral_statistics['rri_low_high_spectral_ratio' + suffix] = np.nan
             rri_spectral_statistics['rri_low_very_high_spectral_ratio' + suffix] = np.nan
@@ -968,32 +1105,37 @@ class HeartRateVariabilityStatistics:
         # Empty dictionary
         rri_fragmentation_statistics = dict()
 
-        if len(diff_rri) > 1:
-            # Calculate zero crossing indices.
-            diff_rri_zero_crossings = np.where(np.diff(np.sign(diff_rri)))[0]
+        try:
+            if len(diff_rri) > 1:
+                # Calculate zero crossing indices.
+                diff_rri_zero_crossings = np.where(np.diff(np.sign(diff_rri)))[0]
 
             # The percentage of zero-crossing points in the rri diff time series.
-            rri_fragmentation_statistics['fragmentation_pip' + suffix] = \
+                rri_fragmentation_statistics['fragmentation_pip' + suffix] = \
                 len(diff_rri_zero_crossings) / len(diff_rri) * 100
 
             # The inverse of the average length of the acceleration/deceleration segments.
-            rri_fragmentation_statistics['fragmentation_ials' + suffix] = \
+                rri_fragmentation_statistics['fragmentation_ials' + suffix] = \
                 np.mean(1 / np.diff(diff_rri_ts[diff_rri_zero_crossings]))
 
             # The percentage of NN intervals in acceleration and deceleration segments with three or more NN intervals.
-            rri_fragmentation_statistics['fragmentation_pss' + suffix] = \
+                rri_fragmentation_statistics['fragmentation_pss' + suffix] = \
                 np.sum(np.diff(diff_rri_zero_crossings) >= 3) / len(diff_rri_zero_crossings) * 100
 
             # The percentage of NN intervals in alternation segments.
-            rri_fragmentation_statistics['fragmentation_pas' + suffix] = \
+                rri_fragmentation_statistics['fragmentation_pas' + suffix] = \
                 np.sum(np.diff(diff_rri_zero_crossings) == 1) / len(diff_rri_zero_crossings) * 100
 
-        else:
+            else:
+                rri_fragmentation_statistics['fragmentation_pip' + suffix] = np.nan
+                rri_fragmentation_statistics['fragmentation_ials' + suffix] = np.nan
+                rri_fragmentation_statistics['fragmentation_pss' + suffix] = np.nan
+                rri_fragmentation_statistics['fragmentation_pas' + suffix] = np.nan
+        except:
             rri_fragmentation_statistics['fragmentation_pip' + suffix] = np.nan
             rri_fragmentation_statistics['fragmentation_ials' + suffix] = np.nan
             rri_fragmentation_statistics['fragmentation_pss' + suffix] = np.nan
             rri_fragmentation_statistics['fragmentation_pas' + suffix] = np.nan
-
         return rri_fragmentation_statistics
 
     def calculate_rpeak_detection_statistics(self):
@@ -1037,35 +1179,39 @@ class HeartRateVariabilityStatistics:
 
         # Empty dictionary
         rri_cluster_statistics = dict()
+        try:
+            if len(self.rri) > 6:
 
-        if len(self.rri) > 6:
+                # Combine r_ibi and r_ibi + 1
+                rri_combined = np.column_stack((self.rri[0:-2], self.rri[1:-1]))
 
-            # Combine r_ibi and r_ibi + 1
-            rri_combined = np.column_stack((self.rri[0:-2], self.rri[1:-1]))
+                # Set cluster range
+                clusters = range(1, 4)
 
-            # Set cluster range
-            clusters = range(1, 4)
+                # Compute KMeans clusters
+                cluster_models = [KMeans(n_clusters=cluster).fit(rri_combined) for cluster in clusters]
 
-            # Compute KMeans clusters
-            cluster_models = [KMeans(n_clusters=cluster).fit(rri_combined) for cluster in clusters]
+                # Get centroids
+                centroids = [cluster_model.cluster_centers_ for cluster_model in cluster_models]
 
-            # Get centroids
-            centroids = [cluster_model.cluster_centers_ for cluster_model in cluster_models]
+                # Compute intra-cluster distances
+                distances = [cdist(rri_combined, cent, 'euclidean') for cent in centroids]
+                dist = [np.min(distance, axis=1) for distance in distances]
+                ssd = [sum(d) / rri_combined.shape[0] * 1000 for d in dist]
 
-            # Compute intra-cluster distances
-            distances = [cdist(rri_combined, cent, 'euclidean') for cent in centroids]
-            dist = [np.min(distance, axis=1) for distance in distances]
-            ssd = [sum(d) / rri_combined.shape[0] * 1000 for d in dist]
+                rri_cluster_statistics['rri_cluster_ssd_slope'] = np.polyfit(x=clusters, y=ssd, deg=1)[0]
+                rri_cluster_statistics['rri_cluster_ssd_1'] = ssd[0]
+                rri_cluster_statistics['rri_cluster_ssd_2'] = ssd[1]
+                rri_cluster_statistics['rri_cluster_ssd_3'] = ssd[2]
 
-            rri_cluster_statistics['rri_cluster_ssd_slope'] = np.polyfit(x=clusters, y=ssd, deg=1)[0]
-            rri_cluster_statistics['rri_cluster_ssd_1'] = ssd[0]
-            rri_cluster_statistics['rri_cluster_ssd_2'] = ssd[1]
-            rri_cluster_statistics['rri_cluster_ssd_3'] = ssd[2]
-
-        else:
+            else:
+                rri_cluster_statistics['rri_cluster_ssd_slope'] = np.nan
+                rri_cluster_statistics['rri_cluster_ssd_1'] = np.nan
+                rri_cluster_statistics['rri_cluster_ssd_2'] = np.nan
+                rri_cluster_statistics['rri_cluster_ssd_3'] = np.nan
+        except:
             rri_cluster_statistics['rri_cluster_ssd_slope'] = np.nan
             rri_cluster_statistics['rri_cluster_ssd_1'] = np.nan
             rri_cluster_statistics['rri_cluster_ssd_2'] = np.nan
             rri_cluster_statistics['rri_cluster_ssd_3'] = np.nan
-
         return rri_cluster_statistics
