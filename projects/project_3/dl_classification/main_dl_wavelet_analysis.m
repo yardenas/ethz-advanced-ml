@@ -1,12 +1,6 @@
 ECGData.Labels = SegmentedLabels;
 ECGData.Data = cell2mat(SegmentedSignals);
 
-%% Delete 'Noisy Recording' signals
-toDelete = (ECGData.Labels == '3');
-ECGData.Labels(toDelete) = [];
-ECGData.Labels = removecats(ECGData.Labels);
-ECGData.Data(toDelete, :) = [];
-
 %% Plot the Signals
 helperPlotData(ECGData);
 
@@ -78,7 +72,7 @@ options = trainingOptions('sgdm',...
     'ValidationData',imgsValidation,...
     'ValidationFrequency',10,...
     'Verbose',1,...
-    'ExecutionEnvironment','parallel',...
+    'ExecutionEnvironment','cpu',...
     'Plots','training-progress');
 rng default
 trainedGN = trainNetwork(imgsTrain,lgraph,options);
